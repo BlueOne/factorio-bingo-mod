@@ -1,0 +1,12 @@
+{
+	"name": "bingo",
+	"version": "0.1.0",
+	"title": "Bingo (Experimental)",
+	"author": "unique2, Steelaxe Community",
+	"dependencies": [
+    "base >= 1.1.0",
+    "stdlib >= 1.4.3"
+  ],
+	"description": "Bingo ",
+	"factorio_version": "1.1"
+}
