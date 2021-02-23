@@ -28,7 +28,7 @@ BoardCreator.roll_board = function(settings) --luacheck:ignore
     if settings and settings.seed then
         seed = settings.seed
     end
-    local rng = game.create_random_generator()
+    local rng = game.create_random_generator(seed)
     local tasks_all = TaskPrototypes.all()
     local tasks = {}
 

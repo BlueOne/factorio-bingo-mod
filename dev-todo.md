@@ -40,3 +40,5 @@ Game Rules / Setup
 Control
 * Chat cmds. for resetting / disabling tasks, rolling back a victory (need to make changes to Board / Task interface) and to start board for a player.
 
+Meta
+* Move this to git issues
