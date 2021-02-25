@@ -56,6 +56,7 @@ Event.on_event(defines.events.on_player_joined_game, function(args)
     end
 end)
 
+
 Gui.on_click("start_bingo_button", function(_)
     for _, p in pairs(game.players) do
         if p.gui.screen.bingo_start_frame then
