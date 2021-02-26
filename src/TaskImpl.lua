@@ -13,8 +13,9 @@ local TaskImpl = {
 ------------------------------------------------------------------------------
 -- General
 
-local done_color = "[color=140, 255, 140]"
-local default_color = "[color=222,222,222]"
+--local done_color = "[color=180, 180, 180]"
+local done_color = "[color=140, 200, 140]"
+local default_color = "[color=240,240,240]"
 local default_font = "default-semibold"
 local type_func = type
 
@@ -174,7 +175,7 @@ SelfVerified.create_ui = function(task)
     label.style.vertical_align = "center"
     local checkbox = inner_flow.add{type="checkbox", name="SelfVerified_checkbox_"..task.name, state=false}
     checkbox.tooltip = "This task has no automatic verification. Verify it manually via this checkbox. "
-    checkbox.style.top_margin = 6
+    checkbox.style.top_margin = 3
     checkbox.tags = {player_index = task.player_index}
 
     SelfVerified_update_ui(task)

@@ -23,8 +23,6 @@ Tasks
 
 UI
 * Use custom styles instead of setting style properties by hand in places where it makes sense.
-* Generically mark finished tasks visually by e.g. changing color of the frames. Annoying because style of frames cannot be changed after creation so would have to recreate them.
-* Localised strings for e.g. assemblers in production tasks aren't working. 
 * Make everything prettier
 
 

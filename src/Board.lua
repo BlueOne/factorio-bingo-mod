@@ -71,7 +71,7 @@ Board.create = function(task_names, player)
             index = i,
             player = player,
             player_index = player.index,
-            flow = board.flow.bingo_table["bingo_task_"..i],
+            flow = board.flow.bingo_table["bingo_task_"..i].flow,
             done = false or prototype.done,
             name = name,
             data = {},
@@ -90,6 +90,7 @@ Board.create = function(task_names, player)
         table.insert(board.tasks, task)
         TaskImpl[task.type].create_ui(task)
         Tasks.add(task)
+        if task.done then task.flow.parent.style = "dark_green_frame" else task.flow.parent.style = "inside_deep_frame" end
     end
     return board
 end
@@ -117,12 +118,13 @@ Board.create_board_ui = function(player)
 
     for i = 1, 25 do
         local task_ui = bingo_table.add{type="frame", name="bingo_task_"..i, direction="vertical", style="inside_deep_frame"}
+        local task_flow = task_ui.add{type="flow", name="flow", direction="vertical"}
+        task_flow.style.width = 90
+        task_flow.style.height = 45
         task_ui.style.horizontal_align = "center"
         task_ui.style.vertical_align = "center"
-        task_ui.style.maximal_width = 90
-        task_ui.style.minimal_width = 90
-        task_ui.style.maximal_height = 45
-        task_ui.style.minimal_height = 45
+        task_flow.style.horizontal_align = "center"
+        task_flow.style.vertical_align = "center"
     end
 end
 
@@ -139,6 +141,8 @@ Board.task_finished = function(player, task, done)
     if board.won then return end
     if done == nil then done = true end
     task.done = done
+
+    if task.done then task.flow.parent.style = "dark_green_frame" else task.flow.parent.style = "inside_deep_frame" end
 
     -- TODO: change task ui frame color or find some other way to signal task done/not done
     if done then
@@ -191,7 +195,7 @@ Board.on_configuration_changed = function()
         Board.destroy_board_ui(player)
         Board.create_board_ui(player)
         for _, task in pairs(board.tasks) do
-            task.flow = board.flow.bingo_table["bingo_task_"..task.index]
+            task.flow = board.flow.bingo_table["bingo_task_"..task.index].flow
             TaskImpl[task.type].create_ui(task)
         end
     end
