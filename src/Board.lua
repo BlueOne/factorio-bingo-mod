@@ -250,6 +250,4 @@ end
 
 Event.on_configuration_changed(Board.on_configuration_changed)
 
-Event.register(define)
-
 return Board
