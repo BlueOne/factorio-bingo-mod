@@ -16,53 +16,31 @@ local research_all_recipes = function(force)
 end
 
 -- TODO this is temporary. Come up with a better design.
--- Current design: if started in mp then show start button to first player. if sp then start immediately.
+-- Current design: Bingo starts on init, joining players are assigned to the board as active players.
 local start_bingo = function()
     research_all_recipes(game.forces.player)
-    global.bingo_started = true
-    game.tick_paused = false
     local settings = {
         seed = game.surfaces["nauvis"].map_gen_settings.seed
     }
     local tasks = BoardCreator.roll_board(settings)
-    for i, p in pairs(game.players) do
-        if p.connected and p.force.name == "player" then
-            Board.create(tasks, p)
+    local players = {}
+    for _, p in pairs(game.players) do
+        if p.force.name == "player" then
+            table.insert(players, p)
         end
     end
+    local board = Board.create(tasks, players, players)
+    global.bingo_board = board
 end
 
 
 Event.on_init(function()
-    if #game.players == 0 then
-        game.tick_paused = true
-    else
-        start_bingo()
-    end
+    start_bingo()
 end)
 
 Event.on_event(defines.events.on_player_joined_game, function(args)
-    if global.bingo_started then return end
     local player = game.players[args.player_index]
-
-    if game.is_multiplayer() then
-        local screen = player.gui.screen
-        if not screen.bingo_start_frame then
-            local frame = screen.add{type="frame", name="bingo_start_frame", caption = "Bingo"}
-            frame.add{type="button", name="start_bingo_button", caption="Start Bingo", style="menu_button_continue"}
-        end
-    else
-        start_bingo()
-    end
-end)
-
-
-Gui.on_click("start_bingo_button", function(_)
-    for _, p in pairs(game.players) do
-        if p.gui.screen.bingo_start_frame then
-            p.gui.screen.bingo_start_frame.destroy()
-        end
-    end
-    start_bingo()
+    if not global.bingo_board then start_bingo() end
+    Board.add_player(global.bingo_board, player)
 end)
 

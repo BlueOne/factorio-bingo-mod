@@ -19,14 +19,15 @@ local default_color = "[color=240,240,240]"
 local default_font = "default-semibold"
 local type_func = type
 
-local notify_task_done = function(player, task, done)
+local notify_task_done = function(task, done)
     if done == nil then done = true end
+    task.done = done
     local event_data = {
         name = CustomEvent.on_task_finished,
         task = task,
-        player = player,
         done = done
     }
+    --script.raise_event(CustomEvent.on_task_finished, event_data)
     Event.dispatch(event_data)
 end
 
@@ -69,9 +70,8 @@ local production_text = function(produced, target, icon)
     return text
 end
 
-local FlowStat_get_value = function(target, player)
+local FlowStat_get_value = function(target, force)
     local name = target[1]
-    local force = player.force
     if target[3] == "item" or target[3] == nil then
         local itemStats = force.item_production_statistics
         return itemStats.get_input_count(name)
@@ -89,45 +89,57 @@ local FlowStat_get_value = function(target, player)
     end
 end
 
-local FlowStat_update_ui = function(task)
-    local player = task.player
+local FlowStat_update_ui = function(task, player)
     local text = ""
     for _, target in pairs(task.targets) do
         local amount = target[2]
-        local produced = FlowStat_get_value(target, player)
+        local produced = FlowStat_get_value(target, task.force)
         local icon_text = target[4] or "[item="..target[1].."]"
         text = text..production_text(produced, amount, icon_text)
     end
-    task.flow.description_text.caption = text
+    task.flows[player.index].description_text.caption = text
 end
 
+local FlowStat_check_finished = function(task)
+    if not task.done and not task.board.won then
+        local task_done = true
+        for _, target in pairs(task.targets) do
+            local want = target[2]
+            local have = FlowStat_get_value(target, task.force)
+            if have < want then task_done = false end
+        end
+        if task_done and not task.done then
+            notify_task_done(task)
+        end
+    end
+end
 
 FlowStat.handlers.on_nth_tick = {
     [60] = function()
         for _, task in pairs(Tasks.get_tasks_of_type("FlowStat")) do
-            if not task.done and not task.board.won then
-                local player = task.player
-                local task_done = true
-                for _, target in pairs(task.targets) do
-                    local want = target[2]
-                    local have = FlowStat_get_value(target, player)
-                    if have < want then task_done = false end
-                end
-                FlowStat_update_ui(task)
-                if task_done and not task.done then
-                    notify_task_done(player, task)
-                end
+            FlowStat_check_finished(task)
+            for _, player in pairs(task.board.ui_players) do
+                FlowStat_update_ui(task, player)
             end
         end
     end
 }
+FlowStat.init = function(task, on_load)
+    if not on_load then
+        FlowStat_check_finished(task)
+        for _, player in pairs(task.board.ui_players) do
+            FlowStat_update_ui(task, player)
+        end
+    end
+end
 
-FlowStat.create_ui = function(task)
-    local label = task.flow.add{type="label", name="description_text", caption=""}
+FlowStat.create_ui = function(task, player)
+    local flow = task.flows[player.index]
+    local label = flow.add{type="label", name="description_text", caption=""}
     label.style.font = default_font
     label.tooltip = task.description
 
-    FlowStat_update_ui(task)
+    FlowStat_update_ui(task, player)
 end
 
 TaskImpl.FlowStat = FlowStat
@@ -140,23 +152,26 @@ local SelfVerified = {
     handlers = {}
 }
 
-local SelfVerified_update_ui = function(task)
-    task.flow.inner_flow.description_text.caption = (task.done and done_color or default_color)..task.short_title.."[/color]"
+local SelfVerified_update_ui = function(task, player)
+    local flow = task.flows[player.index]
+    flow.inner_flow.description_text.caption = (task.done and done_color or default_color)..task.short_title.."[/color]"
+    flow.inner_flow["SelfVerified_checkbox_"..task.name].state = task.done
 end
 
 local SelfVerified_on_checkbox_clicked = function(event)
     local element = event.element
+    local player_index = event.player_index
     for _, task in pairs(Tasks.get_tasks_of_type("SelfVerified")) do
-        local player_index = element.tags.player_index
-        if task.player_index == player_index and event.player_index == player_index then
+        if element.name == "SelfVerified_checkbox_"..task.name and table.any(task.board.active_players, function(p) return p.index == player_index end) then
             task.done = element.state
-            local player = game.players[player_index]
             if task.done then
-                notify_task_done(player, task, true)
+                notify_task_done(task, true)
             else
-                notify_task_done(player, task, false)
+                notify_task_done(task, false)
             end
-            SelfVerified_update_ui(task)
+            for _, player in pairs(task.board.ui_players) do
+                SelfVerified_update_ui(task, player)
+            end
         end
     end
 end
@@ -165,9 +180,9 @@ SelfVerified.handlers = {
     on_gui_checked_state_changed = { event_id = defines.events.on_gui_checked_state_changed, handler = SelfVerified_on_checkbox_clicked, filter = Event.Filters.gui, pattern = "SelfVerified_checkbox_.*" }
 }
 
-
-SelfVerified.create_ui = function(task)
-    local inner_flow = task.flow.add{type="flow", name="inner_flow", direction="horizontal"}
+SelfVerified.create_ui = function(task, player)
+    local flow = task.flows[player.index]
+    local inner_flow = flow.add{type="flow", name="inner_flow", direction="horizontal"}
     local label = inner_flow.add{type="label", name="description_text", caption=task.short_title, tooltip=task.description}
     label.style.font = default_font
     label.tooltip = task.description
@@ -176,9 +191,8 @@ SelfVerified.create_ui = function(task)
     local checkbox = inner_flow.add{type="checkbox", name="SelfVerified_checkbox_"..task.name, state=false}
     checkbox.tooltip = "This task has no automatic verification. Verify it manually via this checkbox. "
     checkbox.style.top_margin = 3
-    checkbox.tags = {player_index = task.player_index}
 
-    SelfVerified_update_ui(task)
+    SelfVerified_update_ui(task, player)
 end
 
 

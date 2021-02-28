@@ -1,7 +1,7 @@
 
 
 
-local TaskPrototypes = require("src/TaskPrototypes")
+local TaskPrototypes = require("TaskPrototypes")
 local mod_gui = require("mod-gui")
 local table = require('__stdlib__/stdlib/utils/table')
 local Event = require('__stdlib__/stdlib/event/event')
@@ -9,24 +9,25 @@ local Gui = require('__stdlib__/stdlib/event/gui')
 local CustomEvent = require("customEvent")
 local Tasks = require("src/TaskRegistry")
 local TaskImpl = require("src/TaskImpl")
+local ModUtil = require("src/ModUtil")
 
 -- Handles runtime game control and ui that isn't task specific. Task specific stuff is in the task prototypes.
 
 -- Constraints:
---      At most one board per player
---      Task names are unique per board
+--      Board contains at most one task of any name
+--      Each player may be active in one board and only view the ui of one board.
 
 local Board = {}
 
 Board.g = {
-    player_boards = {},
+    boards = {},
 }
 
 
 Board.on_load = function()
     Board.g = global.Board or Board.g
     -- load board
-    for _, board in pairs(Board.g.player_boards) do
+    for _, board in pairs(Board.g.boards) do
         -- load task
         for i, task in pairs(board.tasks) do
             local mt = {__index = TaskPrototypes.get(task.name)}
@@ -45,59 +46,85 @@ end
 Event.on_init(Board.on_init)
 
 
-Board.get_board = function(player)
-    if type(player) ~= type(1) then player = player.index end
-    return Board.g.player_boards[player]
+Board.get_ui = function(player)
+    local player_index = player
+    if type(player_index) ~= type(1) then player_index = player.index end
+    return table.find(Board.g.boards,
+        function(b) return table.any(b.ui_players,
+            function(p) return p.index == player_index end)
+        end
+    )
 end
 
-Board.create = function(task_names, player)
-    if type(player) == type(1) then player = game.players[player] end
+Board.add_player = function(board, player)
+    if not ModUtil.table_contains(board.active_players, player) then
+        table.insert(board.active_players, player)
+    end
+    Board.add_ui_player(board, player)
+end
+
+Board.add_ui_player = function(board, player)
+    if not ModUtil.table_contains(board.ui_players, player) then
+        table.insert(board.ui_players, player)
+        Board.create_board_ui(board, player)
+    end
+end
+
+Board.create = function(task_names, active_players, ui_players)
+    if active_players then
+        active_players = table.deepcopy(active_players)
+    else
+        active_players = {}
+    end
+    if ui_players then
+        ui_players = table.deepcopy(ui_players)
+    else
+        ui_players = table.depcopy(active_players)
+    end
     assert(#task_names == 25, "Task list for creation of board is not length 25.")
-    assert(Board.g.player_boards[player.index] == nil, "Attempting to create board for a player while a board already exists.")
     local board = {
-        player_index = player.index,
         tasks = {},
-        player = player,
         won = false,
+        active_players = active_players,
+        ui_players = ui_players,
+        flows = {}
     }
-    Board.g.player_boards[player.index] = board
-
-    Board.create_board_ui(player)
-
-
+    table.insert(Board.g.boards, board)
     for i, name in pairs(task_names) do
         local prototype = TaskPrototypes.get(name)
         local task = {
             index = i,
-            player = player,
-            player_index = player.index,
-            flow = board.flow.bingo_table["bingo_task_"..i].flow,
+            flows = {},
             done = false or prototype.done,
             name = name,
             data = {},
             board = board,
+            force = game.forces.player
         }
         setmetatable(task, {__index = prototype})
         assert(TaskImpl[task.type], "Task Type not implemented: "..task.type)
         TaskImpl.init_events(task.type)
-        -- TODO use title, prettier ui
-        --local title = task.flow.add{type="label", caption=task.title, name="title"}
-        --title.style.horizontal_align = "center"
-        --title.style.font_color = {r=255,g=200,b=105}
-        --title.style.font = "default-large-semibold"
-        if TaskImpl[task.type].init then TaskImpl[task.type].init(task) end
-        if task.init then task.init(task, false) end
-        table.insert(board.tasks, task)
-        TaskImpl[task.type].create_ui(task)
         Tasks.add(task)
-        if task.done then task.flow.parent.style = "dark_green_frame" else task.flow.parent.style = "inside_deep_frame" end
+        table.insert(board.tasks, task)
+    end
+
+    for _, player in pairs(board.ui_players) do
+        Board.create_board_ui(board, player)
+    end
+
+    for i = 1, 25 do
+        local task = board.tasks[i]
+        if TaskImpl[task.type].init then TaskImpl[task.type].init(task) end
+        for _, player in pairs(board.ui_players) do
+            local flow = task.flows[player.index]
+            if task.done then flow.parent.style = "dark_green_frame" else flow.parent.style = "inside_deep_frame" end
+        end
     end
     return board
 end
 
--- TODO: doesn't create the ui of the tasks. Current order is create board ui -> init tasks -> create task ui and each step requires the previous ones.
--- TODO: This is very rudimentary for now. Styles need to be worked.
-Board.create_board_ui = function(player)
+-- TODO: This is rudimentary for now. Styles need to be worked.
+Board.create_board_ui = function(board, player)
     if type(player) == type(1) then player = game.players[player] end
     local button_flow = mod_gui.get_button_flow(player)
     if button_flow.bingo_hide_button then button_flow.bingo_hide_button.destroy() end
@@ -108,23 +135,28 @@ Board.create_board_ui = function(player)
     local frame_flow = player.gui.screen
     if frame_flow.bingo_flow then frame_flow.bingo_flow.destroy() end
     local flow = frame_flow.add{type="frame", caption="Bingo!", name="bingo_flow", direction="vertical"}
-    flow.location = {0, 60}
+        flow.location = {0, 60}
 
-    local board = Board.get_board(player)
-    board.flow = flow
+    board.flows[player.index] = flow
 
     local bingo_table = flow.add{type="table", name="bingo_table", column_count=5, vertical_centering=true, style="filter_slot_table", }
     bingo_table.style.cell_padding = 4
 
     for i = 1, 25 do
+        local task = board.tasks[i]
+        -- Flow inside the frame so that we can change the color of the frame without changing the dimension and alignments inside the flow.
         local task_ui = bingo_table.add{type="frame", name="bingo_task_"..i, direction="vertical", style="inside_deep_frame"}
         local task_flow = task_ui.add{type="flow", name="flow", direction="vertical"}
-        task_flow.style.width = 90
+        task_flow.style.width = 94
         task_flow.style.height = 45
         task_ui.style.horizontal_align = "center"
         task_ui.style.vertical_align = "center"
         task_flow.style.horizontal_align = "center"
         task_flow.style.vertical_align = "center"
+
+        task.flows[player.index] = task_flow
+        TaskImpl[task.type].create_ui(task, player)
+        if task.done then task.flows[player.index].parent.style = "dark_green_frame" else task.flows[player.index].parent.style = "inside_deep_frame" end
     end
 end
 
@@ -136,15 +168,16 @@ Board.destroy_board_ui = function(player)
     frame_flow.bingo_flow.destroy()
 end
 
-Board.task_finished = function(player, task, done)
+Board.task_finished = function(task, done)
     local board = task.board
     if board.won then return end
     if done == nil then done = true end
     task.done = done
 
-    if task.done then task.flow.parent.style = "dark_green_frame" else task.flow.parent.style = "inside_deep_frame" end
+    for _, player in pairs(board.ui_players) do
+        if task.done then task.flows[player.index].parent.style = "dark_green_frame" else task.flows[player.index].parent.style = "inside_deep_frame" end
+    end
 
-    -- TODO: change task ui frame color or find some other way to signal task done/not done
     if done then
         if TaskImpl[task.type].finished then TaskImpl[task.type].finished(task) end
 
@@ -158,17 +191,32 @@ Board.task_finished = function(player, task, done)
         for i = 0, 4 do
             local c = board.tasks[x + 5*i]
             local r = board.tasks[row_start + i]
-            if not c.done then column_finished = false end
-            if not r.done then row_finished = false end
+            if not c or not c.done then column_finished = false end
+            if not r or not r.done then row_finished = false end
         end
         local text = ""
-        if column_finished then text = "Column "..x.." finished. Ingame time: "..util.formattime(game.tick) end
-        if row_finished then text = "Row "..y.." finished. Ingame time: "..util.formattime(game.tick) end
+        if column_finished then
+            text = "Column "..x.." finished. Ingame time: "..util.formattime(game.tick)
+        elseif row_finished then
+            text = "Row "..y.." finished. Ingame time: "..util.formattime(game.tick)
+        end
         if column_finished or row_finished then
-            board.flow.caption = "Bingo! "..text
+            for _, player in pairs(board.ui_players) do
+                board.flows[player.index].caption = "Bingo! "..text
+            end
             game.print(text)
             board.won = true
-            game.print("Player "..player.name.." finished the board. Congratulations!")
+            local player_string = ""
+            for i = 1, 4 do
+                if board.active_players[i] then
+                    player_string = player_string..board.active_players[i].name
+                end
+                if board.active_players[i+1] and i ~= 4 then
+                    player_string = player_string..", "
+                end
+            end
+            if board.active_players[5] then player_string = player_string.." and more" end
+            game.print("Players "..player_string.." finished the board!")
 --            for _, t in pairs(board.tasks) do
 --                if t.destroy then t.destroy(t, board) end
 --                TaskEvent.remove_task(t)
@@ -176,27 +224,25 @@ Board.task_finished = function(player, task, done)
         end
     end
 end
-Event.register(CustomEvent.on_task_finished, function(e) Board.task_finished(e.player, e.task, e.done) end)
+Event.register(CustomEvent.on_task_finished, function(e) Board.task_finished(e.task, e.done) end)
 
 
 Board.toggle_hide_ui = function(args)
     local player = game.players[args.player_index]
     --local element = args.element
-    local board = Board.get_board(player)
-    board.flow.visible = not board.flow.visible
+    local board = Board.get_ui(player)
+    local flow = board.flows[args.player_index]
+    flow.visible = not flow.visible
 end
 Gui.on_click("bingo_hide_button", Board.toggle_hide_ui)
 
 
 Board.on_configuration_changed = function()
     -- Rebuild ui
-    for _, board in pairs(Board.g.player_boards) do
-        local player = board.player
-        Board.destroy_board_ui(player)
-        Board.create_board_ui(player)
-        for _, task in pairs(board.tasks) do
-            task.flow = board.flow.bingo_table["bingo_task_"..task.index].flow
-            TaskImpl[task.type].create_ui(task)
+    for _, board in pairs(Board.g.boards) do
+        for _, player in pairs(board.ui_players) do
+            Board.destroy_board_ui(player)
+            Board.create_board_ui(board, player)
         end
     end
 end
@@ -204,5 +250,6 @@ end
 
 Event.on_configuration_changed(Board.on_configuration_changed)
 
+Event.register(define)
 
 return Board

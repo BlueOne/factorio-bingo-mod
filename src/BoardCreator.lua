@@ -1,4 +1,4 @@
-local TaskPrototypes = require("src/TaskPrototypes")
+local TaskPrototypes = require("TaskPrototypes")
 
 local BoardCreator = {}
 

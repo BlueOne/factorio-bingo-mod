@@ -19,12 +19,12 @@ Tasks
     - Time limit tasks. "Research steel axe before 25 minutes"
     - Consider a model for subtasks / composite tasks. Ideally this would make tasks like "produce 5k iron plates before 20 minutes" or "build at most one type of inserter" easier, but needs to be well designed, maybe easier to code by hand in the few cases we want
 * May need a better interface between board and tasks. Cannot currently reset tasks (e.g. to roll back erroneous completion of task)
-
+* Display change in the previous minute on production tasks?
 
 UI
-* Use custom styles instead of setting style properties by hand in places where it makes sense.
-* Make everything prettier
+* Make everything prettier i.e. work on styles
 
+Spectator Tools
 
 Game Rules / Setup
 * Find a convenient way to enter settings such as board generation settings or recipe / technology state. Options appear to be mod settings or ingame menu. Issue with mod settings: difficult to transfer. Work with presets?
@@ -34,4 +34,5 @@ Control
 * Chat cmds. for resetting / disabling tasks, rolling back a victory (need to make changes to Board / Task interface) and to start board for a player.
 
 Meta
+* Logo / Icon for the mod?
 * Move this to git issues

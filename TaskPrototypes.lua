@@ -56,6 +56,7 @@ local simple_stat_task = function(name, count, stat_type, localized_name, icon_s
     if stat_type == "build" then verb = "Build" end
     local description = {"", verb .." "..count.." x ", {localized_name}}
     --error("produce-"..count.."-"..item)
+
     TaskPrototypes.add{
         name = stat_type.."-"..name.."-"..count,
         type = "FlowStat",
@@ -81,6 +82,14 @@ TaskPrototypes.add{
     description = "Build a belt around your base and fill it completely with piercing rounds magazines on one side of the belt. The belt has to go around all assemblers, steam engines and furnaces at the end of the game. ",
 }
 
+TaskPrototypes.add{
+    name = "pet_cat",
+    type = "SelfVerified",
+    short_title = "Pet the cat",
+    description = "Pet the cat. ",
+    title = "Pet the cat."
+}
+
 simple_stat_task("small-biter", 1000, "kill", "entity-name.small-biter", "[entity=small-biter]")
 simple_stat_task("iron-gear-wheel", 10000)
 simple_stat_task("utility-science-pack", 40)
@@ -92,7 +101,7 @@ simple_stat_task("stone", 20000)
 simple_stat_task("electric-mining-drill", 250, nil, "entity-name.electric-mining-drill")
 simple_stat_task("engine-unit", 400)
 simple_stat_task("assembling-machine-1", 150, nil, "entity-name.assembling-machine-1")
-simple_stat_task("oil-refinery", 30)
+simple_stat_task("oil-refinery", 30, nil, "entity-name.oil-refinery")
 simple_stat_task("steam-engine", 40, nil, "entity-name.steam-engine")
 simple_stat_task("automation-science-pack", 3000)
 simple_stat_task("explosive-rocket", 200)

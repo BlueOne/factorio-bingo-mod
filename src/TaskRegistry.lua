@@ -10,7 +10,7 @@ TaskRegistry.add = function(task)
 end
 
 TaskRegistry.get_tasks_of_type = function(type)
-    return TaskRegistry.g[type]
+    return TaskRegistry.g[type] or {}
 end
 
 
