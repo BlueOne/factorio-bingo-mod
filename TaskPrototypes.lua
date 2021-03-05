@@ -1,6 +1,6 @@
 local table = require("__stdlib__/stdlib/utils/table")
 local util = require("util")
-
+local TaskImpl = require("src/TaskImpl")
 
 local TaskPrototypes = {
     tasks = {}
@@ -12,15 +12,17 @@ local TaskPrototypes = {
 -- Add task prototype
 -- Parameters:
 -- name (string) - the unique internal name of the task prototype
--- title (string) - the display title of the task
--- short_title (string, optional) - the abbreviated title
--- @tparam string description (optional) description of the task
--- @param flags the list of flags that are used for board generation. Currently only "restriction"
+-- short_title (string) - the abbreviated title
+-- type (string) - type field determines the logic that is used to determine if the task is done.
+-- title (optional, string) - not used currently. the display title of the task
+-- description (optional, string) - description of the task, used in the tooltip.
+-- depending on type further properties may be necessary
 TaskPrototypes.add = function(task)
     assert(task.name ~= nil, "Task prototype is missing a name. \n" .. serpent.block(task))
-    assert(task.title ~= nil, "Task prototype "..task.name.." is missing a title. ")
+    assert(task.short_title ~= nil, "Task prototype "..task.name.." is missing a title. ")
     assert(task.type ~= nil, "Task prototype "..task.name.." is missing a type. ")
     TaskPrototypes.tasks[task.name] = task
+    if TaskImpl[task.type].check_prototype then TaskImpl[task.type].check_prototype(task) end
 end
 
 -- Get task prototype. Asserts that the task exists
@@ -89,6 +91,20 @@ TaskPrototypes.add{
     description = "Pet the cat. ",
     title = "Pet the cat."
 }
+
+local dumb_task = function(name)
+    TaskPrototypes.add{
+        name=name,
+        type="SelfVerified",
+        short_title=name,
+        description=name,
+        title=name
+    }
+end
+
+for _, name in pairs({"lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "icididunt"}) do
+    dumb_task(name)
+end
 
 simple_stat_task("small-biter", 1000, "kill", "entity-name.small-biter", "[entity=small-biter]")
 simple_stat_task("iron-gear-wheel", 10000)

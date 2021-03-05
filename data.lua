@@ -24,6 +24,9 @@ local copy_merge = function(t1, t2)
 end
 
 default_gui.dark_green_frame = copy_merge(default_gui.inside_deep_frame, {
-    graphical_set = { base = { center = { position = {88, 28} } } },
+    graphical_set = { base = { center = {
+                position = {8, 24},
+                tint = {80, 150, 80},
+    } } },
 })
 

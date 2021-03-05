@@ -1,5 +1,8 @@
 
 
+local Board = {}
+
+package.loaded[...] = Board
 
 local TaskPrototypes = require("TaskPrototypes")
 local mod_gui = require("mod-gui")
@@ -17,7 +20,6 @@ local ModUtil = require("src/ModUtil")
 --      Board contains at most one task of any name
 --      Each player may be active in one board and only view the ui of one board.
 
-local Board = {}
 
 Board.g = {
     boards = {},
@@ -46,7 +48,7 @@ end
 Event.on_init(Board.on_init)
 
 
-Board.get_ui = function(player)
+Board.get_board = function(player)
     local player_index = player
     if type(player_index) ~= type(1) then player_index = player.index end
     return table.find(Board.g.boards,
@@ -56,14 +58,56 @@ Board.get_ui = function(player)
     )
 end
 
-Board.add_player = function(board, player)
+Board.add_active_player = function(board, player)
+    -- TODO notify tasks that a player is joining
     if not ModUtil.table_contains(board.active_players, player) then
         table.insert(board.active_players, player)
     end
-    Board.add_ui_player(board, player)
+    Board.subscribe_ui(board, player)
+    Board.generate_team_name(board)
 end
 
-Board.add_ui_player = function(board, player)
+
+Board.remove_player_from_all_boards = function(player, keep_ui)
+    for _, board in pairs(Board.g.boards) do
+        Board.remove_active_player(board, player, keep_ui)
+    end
+end
+
+Board.remove_active_player = function(board, player, keep_ui)
+    -- TODO notify tasks that a player is not active anymore
+    ModUtil.remove_all(board.active_players, function(p) return p == player end)
+    if not keep_ui then
+        Board.unsubscribe_ui(board, player)
+    end
+    Board.generate_team_name(board)
+end
+
+Board.generate_team_name = function(board)
+    local team_name = ""
+    for i = 1, 4 do
+        if board.active_players[i] then
+            team_name = team_name..board.active_players[i].name
+        end
+        if board.active_players[i+1] and i ~= 4 then
+            team_name = team_name..", "
+        end
+    end
+    if board.active_players[5] then team_name = team_name.." and more" end
+    board.team_name = team_name
+
+    for _, player in pairs(board.ui_players) do
+        local flow = Board.get_flow(board, player)
+        flow.caption = "Bingo. "..board.team_name
+    end
+end
+
+Board.unsubscribe_ui = function(board, player)
+    Board.destroy_board_ui(player)
+    ModUtil.remove_all(board.ui_players, function(p) return p == player end)
+end
+
+Board.subscribe_ui = function(board, player)
     if not ModUtil.table_contains(board.ui_players, player) then
         table.insert(board.ui_players, player)
         Board.create_board_ui(board, player)
@@ -71,23 +115,14 @@ Board.add_ui_player = function(board, player)
 end
 
 Board.create = function(task_names, active_players, ui_players)
-    if active_players then
-        active_players = table.deepcopy(active_players)
-    else
-        active_players = {}
-    end
-    if ui_players then
-        ui_players = table.deepcopy(ui_players)
-    else
-        ui_players = table.depcopy(active_players)
-    end
     assert(#task_names == 25, "Task list for creation of board is not length 25.")
     local board = {
         tasks = {},
         won = false,
-        active_players = active_players,
-        ui_players = ui_players,
-        flows = {}
+        active_players = {},
+        ui_players = {},
+        flows = {},
+        team_name = "",
     }
     table.insert(Board.g.boards, board)
     for i, name in pairs(task_names) do
@@ -108,16 +143,17 @@ Board.create = function(task_names, active_players, ui_players)
         table.insert(board.tasks, task)
     end
 
-    for _, player in pairs(board.ui_players) do
-        Board.create_board_ui(board, player)
+    for _, player in pairs(active_players or {}) do
+        Board.add_active_player(board, player)
+    end
+    for _, player in pairs(ui_players or {}) do
+        Board.subscribe_ui(board, player)
     end
 
-    for i = 1, 25 do
-        local task = board.tasks[i]
+    for _, task in pairs(board.tasks) do
         if TaskImpl[task.type].init then TaskImpl[task.type].init(task) end
         for _, player in pairs(board.ui_players) do
-            local flow = task.flows[player.index]
-            if task.done then flow.parent.style = "dark_green_frame" else flow.parent.style = "inside_deep_frame" end
+            Board.update_task_ui_frame(task, player)
         end
     end
     return board
@@ -156,8 +192,13 @@ Board.create_board_ui = function(board, player)
 
         task.flows[player.index] = task_flow
         TaskImpl[task.type].create_ui(task, player)
-        if task.done then task.flows[player.index].parent.style = "dark_green_frame" else task.flows[player.index].parent.style = "inside_deep_frame" end
+        Board.update_task_ui_frame(task, player)
     end
+end
+
+Board.update_task_ui_frame = function(task, player)
+    local frame = Board.get_task_flow(task, player).parent
+    if task.done then frame.style = "dark_green_frame" else frame.style = "inside_deep_frame" end
 end
 
 Board.destroy_board_ui = function(player)
@@ -168,6 +209,22 @@ Board.destroy_board_ui = function(player)
     frame_flow.bingo_flow.destroy()
 end
 
+Board.get_flow = function(board, player)
+    return board.flows[player.index]
+end
+
+Board.get_board_of_task = function(task)
+    return task.board
+end
+
+Board.get_task_flow = function(task, player)
+    return task.flows[player.index]
+end
+
+Board.get_task = function(board, index)
+    return board.tasks[index]
+end
+
 Board.task_finished = function(task, done)
     local board = task.board
     if board.won then return end
@@ -175,7 +232,7 @@ Board.task_finished = function(task, done)
     task.done = done
 
     for _, player in pairs(board.ui_players) do
-        if task.done then task.flows[player.index].parent.style = "dark_green_frame" else task.flows[player.index].parent.style = "inside_deep_frame" end
+        Board.update_task_ui_frame(task, player)
     end
 
     if done then
@@ -202,21 +259,11 @@ Board.task_finished = function(task, done)
         end
         if column_finished or row_finished then
             for _, player in pairs(board.ui_players) do
-                board.flows[player.index].caption = "Bingo! "..text
+                Board.get_flow(board, player).caption = "Bingo! "..text
             end
             game.print(text)
             board.won = true
-            local player_string = ""
-            for i = 1, 4 do
-                if board.active_players[i] then
-                    player_string = player_string..board.active_players[i].name
-                end
-                if board.active_players[i+1] and i ~= 4 then
-                    player_string = player_string..", "
-                end
-            end
-            if board.active_players[5] then player_string = player_string.." and more" end
-            game.print("Players "..player_string.." finished the board!")
+            game.print(board.team_name.." finished the board!")
 --            for _, t in pairs(board.tasks) do
 --                if t.destroy then t.destroy(t, board) end
 --                TaskEvent.remove_task(t)
@@ -230,8 +277,8 @@ Event.register(CustomEvent.on_task_finished, function(e) Board.task_finished(e.t
 Board.toggle_hide_ui = function(args)
     local player = game.players[args.player_index]
     --local element = args.element
-    local board = Board.get_ui(player)
-    local flow = board.flows[args.player_index]
+    local board = Board.get_board(player)
+    local flow = Board.get_flow(board, player)
     flow.visible = not flow.visible
 end
 Gui.on_click("bingo_hide_button", Board.toggle_hide_ui)

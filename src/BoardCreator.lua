@@ -23,7 +23,7 @@ local shuffle = function(t, perm)
 end
 
 -- TODO: This is just a stub.
-BoardCreator.roll_board = function(settings) --luacheck:ignore
+BoardCreator.roll_board = function(settings)
     local seed = 1
     if settings and settings.seed then
         seed = settings.seed

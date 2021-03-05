@@ -41,6 +41,6 @@ end)
 Event.on_event(defines.events.on_player_joined_game, function(args)
     local player = game.players[args.player_index]
     if not global.bingo_board then start_bingo() end
-    Board.add_player(global.bingo_board, player)
+    Board.add_active_player(global.bingo_board, player)
 end)
 
