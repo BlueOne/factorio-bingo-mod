@@ -25,6 +25,8 @@ Board.g = {
     boards = {},
 }
 
+Board.cell_width = 94
+Board.cell_height = 45
 
 Board.on_load = function()
     Board.g = global.Board or Board.g
@@ -65,6 +67,10 @@ Board.add_active_player = function(board, player)
     end
     Board.subscribe_ui(board, player)
     Board.generate_team_name(board)
+end
+
+Board.is_player_active = function(board, player)
+    return ModUtil.table_contains(board.active_players, player)
 end
 
 
@@ -123,6 +129,8 @@ Board.create = function(task_names, active_players, ui_players)
         ui_players = {},
         flows = {},
         team_name = "",
+        marked_line = nil,
+        marked_line_override = {}
     }
     table.insert(Board.g.boards, board)
     for i, name in pairs(task_names) do
@@ -175,16 +183,37 @@ Board.create_board_ui = function(board, player)
 
     board.flows[player.index] = flow
 
-    local bingo_table = flow.add{type="table", name="bingo_table", column_count=5, vertical_centering=true, style="filter_slot_table", }
+    local bingo_table = flow.add{type="table", name="bingo_table", column_count=6, vertical_centering=true, style="filter_slot_table", }
     bingo_table.style.cell_padding = 4
 
+
+    local mark_line_button_index = 0
+    local create_mark_line_button = function(title)
+        local button = bingo_table.add{type="button", caption = title, style="frame_button", name="mark_line_button_"..mark_line_button_index, tags = {index = mark_line_button_index}, tooltip = "Mark this line. Press again to unmark."}
+        button.style.minimal_width = 32
+        button.style.minimal_height = 32
+        button.style.font_color = {0.8, 0.8, 0.8}
+        mark_line_button_index = mark_line_button_index + 1
+        return button
+    end
+    --bingo_table.add{type="flow", name="top_left_empty"}
+    local button = create_mark_line_button()
+    button.tooltip = "Unmark. "
+    for i = 1, 5 do
+        local b = create_mark_line_button(i)
+        b.style.width = Board.cell_width
+    end
     for i = 1, 25 do
+        if i % 5 == 1 then
+            local b = create_mark_line_button((i-1)/5+1)
+            b.style.height = Board.cell_height
+        end
         local task = board.tasks[i]
         -- Flow inside the frame so that we can change the color of the frame without changing the dimension and alignments inside the flow.
         local task_ui = bingo_table.add{type="frame", name="bingo_task_"..i, direction="vertical", style="inside_deep_frame"}
         local task_flow = task_ui.add{type="flow", name="flow", direction="vertical"}
-        task_flow.style.width = 94
-        task_flow.style.height = 45
+        task_flow.style.width = Board.cell_width
+        task_flow.style.height = Board.cell_height
         task_ui.style.horizontal_align = "center"
         task_ui.style.vertical_align = "center"
         task_flow.style.horizontal_align = "center"
@@ -196,9 +225,50 @@ Board.create_board_ui = function(board, player)
     end
 end
 
+local on_mark_line_button_click = function(event)
+    local element = event.element
+    local player_index = event.player_index
+    local line_index = element.tags.index
+    if line_index < 1 or line_index > 10 then line_index = nil end
+    local player = game.players[player_index]
+    local board = Board.get_board(player)
+    if Board.is_player_active(board, player) then
+        if board.marked_line == line_index then
+            board.marked_line = nil
+        else
+            board.marked_line = line_index
+        end
+    else
+        if board.marked_line_override[player_index] == line_index then
+            board.marked_line_override[player_index] = nil
+        else
+            board.marked_line_override[player_index] = line_index
+        end
+    end
+    for i = 1, 25 do
+        Board.update_task_ui_frame(board.tasks[i], player)
+    end
+end
+Gui.on_click("mark_line_button_.*", on_mark_line_button_click)
+
 Board.update_task_ui_frame = function(task, player)
+    local x_line, y_line
+    local marked_line = Board.get_marked_line(Board.get_board_of_task(task), player)
+    local is_task_marked
+    if marked_line then
+        if marked_line < 6 then x_line = marked_line else y_line = marked_line - 5 end
+        local x = (task.index - 1) % 5 + 1
+        local y = math.floor((task.index - 1) / 5) + 1
+        is_task_marked = (x_line and x_line == x) or (y_line and y_line == y)
+    end
     local frame = Board.get_task_flow(task, player).parent
-    if task.done then frame.style = "dark_green_frame" else frame.style = "inside_deep_frame" end
+    if task.done then
+        frame.style = "frame_style_dark_green"
+    elseif is_task_marked or not marked_line then
+        frame.style = "inside_shallow_frame"
+    else
+        frame.style = "inside_deep_frame"
+    end
 end
 
 Board.destroy_board_ui = function(player)
@@ -223,6 +293,12 @@ end
 
 Board.get_task = function(board, index)
     return board.tasks[index]
+end
+
+Board.get_marked_line = function(board, player)
+    local marked_line = board.marked_line
+    if not ModUtil.table_contains(board.active_players, player) and board.marked_line_override[player.index] then marked_line = board.marked_line_override[player.index] end
+    return marked_line
 end
 
 Board.task_finished = function(task, done)

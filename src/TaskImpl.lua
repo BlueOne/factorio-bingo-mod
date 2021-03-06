@@ -169,7 +169,9 @@ TaskImpl.FlowStat = FlowStat
 
 ------------------------------------------------------------------------------
 -- Self Verified Task
--- Task type which is marked as done by the user via a gui element. Does not require any special fields, just make sure to set a precise description.
+-- Task type which is marked as done by the user via a gui element.
+-- Task Specific fields:
+-- done (bool, default false) determines if the task starts as verified.
 local SelfVerified = {
     type = "SelfVerified",
     handlers = {}
@@ -214,6 +216,7 @@ SelfVerified.create_ui = function(task, player)
     local checkbox = inner_flow.add{type="checkbox", name="SelfVerified_checkbox_"..task.name, state=false}
     checkbox.tooltip = "This task has no automatic verification. Verify it manually via this checkbox. "
     checkbox.style.top_margin = 3
+    checkbox.state = task.done
 
     SelfVerified_update_ui(task, player)
 end
