@@ -1,14 +1,14 @@
 
-local Util = {}
 
-Util.table_contains = function(t, v)
+local ModUtil = {}
+ModUtil.contains = function(t, v)
     for _, val in pairs(t) do
         if val == v then return true end
     end
     return false
 end
 
-Util.remove_all = function(t, check_fn, ...)
+ModUtil.remove_all = function(t, check_fn, ...)
     local keys = {}
     for k, v in pairs(t) do
         if check_fn(v, k, ...) then
@@ -20,23 +20,45 @@ Util.remove_all = function(t, check_fn, ...)
     end
 end
 
-Util._nil = {}
-Util.copy_and_recursive_merge = function(t1, t2)
-    local result = table.deepcopy(t1)
-    local merge
-    merge = function(a, b)
-        for k, v in pairs(b) do
-            if a[k] and b[k] and type(a[k]) == type({}) then
-                merge(a[k], b[k])
-            elseif b[k] == Util._nil then
-                a[k] = nil
+ModUtil.copy_and_recursive_merge = function(t1, t2)
+    local copy = table.deepcopy(t1)
+    return util.merge{copy, t2}
+end
+
+ModUtil._nil = ModUtil._nil or {}
+ModUtil.merge = function(tables)
+    local ret = {}
+    for i, tab in ipairs(tables) do
+        for k, v in pairs(tab) do
+            if (type(v) == "table") then
+                if (type(ret[k] or false) == "table") then
+                    ret[k] = util.merge{ret[k], v}
+                else
+                    ret[k] = table.deepcopy(v)
+                end
+            elseif v == ModUtil._nil then
+                ret[k] = nil
             else
-                a[k] = b[k]
+                ret[k] = v
             end
         end
     end
-    merge(result, t2)
-    return result
+    return ret
 end
 
-return Util
+ModUtil.round = function (num, numDecimalPlaces)
+    local mult = 10^(numDecimalPlaces or 0)
+    return math.floor(num * mult + 0.5) / mult
+  end
+
+ModUtil.round_int = function(i)
+    if i < 15 then return ModUtil.round(i) end
+    if i < 50 then
+        local rmd = i % 5
+        if rmd < 2.5 then return i - rmd end
+        return i - rmd + 5
+    end
+    return ModUtil.round_int(i / 10) * 10
+end
+
+return ModUtil
