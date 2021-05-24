@@ -6,6 +6,8 @@ local Board = require("src/Board")
 local BoardGenerator = require("src/BoardGenerator")
 local BoardGui = require("src/BoardGui") --luacheck:ignore 211
 local table = require("__stdlib__/stdlib/utils/table")
+local StartingItems = require("src/StartingItems")
+
 
 local research_all_recipes = function(force)
     for _, tech in pairs(force.technologies) do
@@ -35,9 +37,10 @@ end
 local start_bingo = function()
     setup_spectator_force()
     research_all_recipes(game.forces.player)
+    StartingItems.create_starting_chest(game.surfaces.nauvis, {x=0, y=0})
     local settings = {
         seed = game.surfaces["nauvis"].map_gen_settings.seed,
-        generic_line = {6, 6, 6, "restriction", 8}
+        generic_line = {6, 6, "gather", "restriction", 8}
     }
     local tasks = BoardGenerator.roll_board(settings)
     local players = {}
@@ -76,6 +79,7 @@ Event.on_event(defines.events.on_player_joined_game, function(args) --luacheck: 
 end)
 
 
+--[[
 local set_spectator = function(player, followed_player)
     if not game.forces.spectator then setup_spectator_force() end
     global.is_spectator = global.is_spectator or {}
@@ -95,6 +99,7 @@ local set_spectator = function(player, followed_player)
     -- TODO: set up following
     global.is_spectator[player.index] = true
 end
+--]]
 
 local spectate_help = "Switch to spectator mode. "
 for _, s in pairs({"spectate", "spec"}) do

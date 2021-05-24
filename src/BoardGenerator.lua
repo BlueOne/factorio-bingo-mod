@@ -30,17 +30,22 @@ end
 
 
 
-BoardCreator.get_tasks_by_balancing_category = function()
+local function get_tasks_by_balancing_category()
     if not BoardCreator.tasks_sorted then
         local tasks_sorted = {}
         BoardCreator.tasks_sorted = tasks_sorted
         for _, task in pairs(TaskPrototypes.all()) do
-            if task.difficulty then
-                if not tasks_sorted[task.difficulty] then tasks_sorted[task.difficulty] = {} end
-                table.insert(tasks_sorted[task.difficulty], task)
-            elseif task.restriction then
-                if not tasks_sorted.restriction then tasks_sorted.restriction = {} end
-                table.insert(tasks_sorted.restriction, task)
+            if task.balancing then
+                local difficulty = task.balancing.difficulty
+                if difficulty then
+                    if not tasks_sorted[difficulty] then tasks_sorted[difficulty] = {} end
+                    table.insert(tasks_sorted[difficulty], task)
+                end
+                local t = task.balancing.type
+                if t then
+                    if not tasks_sorted[t] then tasks_sorted[t] = {} end
+                    table.insert(tasks_sorted[t], task)
+                end
             end
         end
     end
@@ -68,15 +73,30 @@ local colorings = {
     },
     {
         5, 1, 2, 3, 4,
+        4, 5, 1, 2, 3,
+        3, 4, 5, 1, 2,
+        2, 3, 4, 5, 1,
+        1, 2, 3, 4, 5,
+    }
+--[[
+    {
+        5, 1, 2, 3, 4,
         2, 5, 3, 4, 1,
         3, 4, 5, 1, 2,
         4, 2, 1, 5, 3,
         1, 3, 4, 2, 5
     }
+--]]
 }
 
--- TODO: This is just a stub.
-BoardCreator.roll_board = function(settings)
+
+-- Takes general settings for bingo board, returns specific tasks for the board
+-- settings = { n=5, seed = ..., generic_line=... }
+-- n is the number of rows and columns,
+-- seed is the rng seed
+-- generic_line determines which tasks are selected in every row/column. For example generic_line = {9, 7, 7, 7, gather} ensures that every row/column contains a task with difficulty 9, three with difficulty 7, one of type gather.
+
+function BoardCreator.roll_board(settings)
     local n = settings.n or 5
     assert(n <= 5)
     local coloring = colorings[n]
@@ -90,7 +110,7 @@ BoardCreator.roll_board = function(settings)
     if settings.generic_line then
         n = #settings.generic_line
         -- Select tasks. For each item in generic_line we select five random tasks of this type, such that all tasks selected are distinct.
-        local tasks_sorted = BoardCreator.get_tasks_by_balancing_category()
+        local tasks_sorted = get_tasks_by_balancing_category()
         local task_indices_left_per_category = {}
         local tasks_selected = {}
 
@@ -101,7 +121,7 @@ BoardCreator.roll_board = function(settings)
                 for j = 1, #tasks_sorted[category] do task_indices_left_per_category[category][j] = j end
             end
             tasks_selected[category_index] = {}
-            assert(#task_indices_left_per_category[category] >= n, "Board Generator: Not enough tasks provided for category "..category)
+            assert(#task_indices_left_per_category[category] >= n, "Board Generator: Not enough tasks provided for category "..category..", found "..#task_indices_left_per_category[category])
             for j = 1, n do
                 local offset = rng(1, #task_indices_left_per_category[category])
                 local task_index = task_indices_left_per_category[category][offset]

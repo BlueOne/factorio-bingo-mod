@@ -48,7 +48,7 @@ TaskPrototypes.all = function()
 end
 
 
-
+-- The price list assigns to every item a value, it is used to balance production tasks automatically.
 local function setup_price_list()
     local params = {}
     params.energy_addition = function(energy, recipe, ingredient_cost)
@@ -95,7 +95,7 @@ end
 -- Warning, build only semi supported
 -- localized_name is the localized name of the item, e.g. "entity-name.assembling-machine". Auto-generated as `"item-name."..name` if omitted.
 -- icon_str is the rich text string of the item, e.g. [item=iron-plate]. Auto-generated as `"[item="..name.."]" if omitted.
-local simple_stat_task = function(name, count, difficulty, localized_name, icon_str, stat_type)
+local simple_stat_task = function(name, count, difficulty, localized_name, icon_str, stat_type, balancing_type)
     localized_name = localized_name or "item-name."..name
     icon_str = icon_str or "[item="..name.."]"
     stat_type = stat_type or "item"
@@ -104,7 +104,6 @@ local simple_stat_task = function(name, count, difficulty, localized_name, icon_
     if stat_type == "kill" then verb = "Kill" end
     if stat_type == "build" then verb = "Build" end
     local description = {"", verb .." "..count.." x ", {localized_name}}
-    --error("produce-"..count.."-"..item)
 
     TaskPrototypes.add{
         name = stat_type.."-"..name.."-"..count,
@@ -116,7 +115,7 @@ local simple_stat_task = function(name, count, difficulty, localized_name, icon_
         targets = {
             {name, count, stat_type, icon_str}
         },
-        difficulty = difficulty
+        balancing = { difficulty = difficulty, type = balancing_type or "production" }
     }
 end
 
@@ -166,8 +165,8 @@ end)
 
 
 function TaskPrototypes.setup_tasks()
-    if global.TaskPrototypes.is_setup then return end
-    global.TaskPrototypes.is_setup = true
+    if global.TaskPrototypes.is_set_up then return end
+    global.TaskPrototypes.is_set_up = true
     TaskPrototypes.add{
         name = "ammo_belt",
         type = "SelfVerified",
@@ -190,17 +189,19 @@ function TaskPrototypes.setup_tasks()
         done = true,
         short_title = "No [item=splitter]",
         description = "Do not build any splitters or fast splitters.",
-        restriction = true
+        balancing = { type = "restriction" }
     }
 
+    --[[
     TaskPrototypes.add{
         name = "restrict_boilers",
         type = "SelfVerified",
         done = true,
         short_title = "≤ 15 [item=boiler]",
         description = "Build at most 15 boilers.",
-        restriction = true
+        balancing = { type = "restriction" }
     }
+    --]]
 
     TaskPrototypes.add{
         name = "restrict_furnaces",
@@ -208,7 +209,7 @@ function TaskPrototypes.setup_tasks()
         done = true,
         short_title = "≤ 24 [item=stone-furnace]",
         description = "Build at most 24 stone furnaces.",
-        restriction = true
+        balancing = { type = "restriction" }
     }
 
     TaskPrototypes.add{
@@ -217,7 +218,7 @@ function TaskPrototypes.setup_tasks()
         done = true,
         short_title = "No [item=inserter] [item=fast-inserter]",
         description = "You are not allowed to build any normal or fast inserters. Burner, long handed, filter, stack and stack filter inserters are allowed. ",
-        restriction = true
+        balancing = { type = "restriction" }
     }
 
     TaskPrototypes.add{
@@ -226,19 +227,8 @@ function TaskPrototypes.setup_tasks()
         done = true,
         short_title = "≤ 5 chests",
         description = "You are allowed to build only a total of five chests. Build as many cars and cargo wagons as you like. ",
-        restriction = true
+        balancing = { type = "restriction" }
     }
-
-    --[[
-    TaskPrototypes.add{
-        name = "restrict_belt_sides",
-        type = "SelfVerified",
-        done = true,
-        short_title = "One side [item=transport-belt]",
-        description = "Items are only allowed on one side of every belt. ",
-        restriction = true
-    }
-    --]]
 
     TaskPrototypes.add{
         name = "red_iron",
@@ -246,7 +236,7 @@ function TaskPrototypes.setup_tasks()
         done = true,
         short_title = "[item=iron-plate] on [item=fast-transport-belt]",
         description = "Iron plates may not be transported on [item=transport-belt],[item=underground-belt] and [item=splitter]. Allowed are: fast belts, cars on yellow belt, cargo wagons. ",
-        restriction = true
+        balancing = { type = "restriction" }
     }
 
 
@@ -256,9 +246,30 @@ function TaskPrototypes.setup_tasks()
         done = true,
         short_title = "No [item=long-handed-inserter]",
         description = "You are not allowed to build any long handed inserters. ",
-        restriction = true
+        balancing = { type = "restriction" }
     }
 
+    simple_stat_task("biter-spawner", 60, nil, "entity-name.biter-spawner", "[entity=biter-spawner]", "kill", "gather")
+    simple_stat_task("medium-biter", 500, nil, "entity-name.medium-biter", "[entity=medium-biter]", "kill", "gather")
+    simple_stat_task("big-worm-turret", 1, nil, "entity-name.big-worm-turret", "[entity=big-worm-turret]", "kill", "gather")
+
+    TaskPrototypes.add{
+        name = "have-500-fish",
+        type = "SelfVerified",
+        done = false,
+        short_title = "500 [item=raw-fish]",
+        description = "Have 500 fish in your inventory at one point in the game.",
+        balancing = { type = "gather" }
+    }
+
+    TaskPrototypes.add{
+        name = "have-3000-wood",
+        type = "SelfVerified",
+        done = false,
+        short_title = "3000 [item=wood]",
+        description = "Have 3000 wood in your inventory at one point in the game. ",
+        balancing = { type = "gather" }
+    }
 
     --[[
     local dumb_task = function(name)
@@ -276,25 +287,24 @@ function TaskPrototypes.setup_tasks()
     end
     --]]
 
-    --simple_stat_task("small-biter", 1000, 5, "entity-name.small-biter", "[entity=small-biter]", "kill")
-    scored_stat_task("automation-science-pack", 6) -- adjusted up from 800
-    scored_stat_task("logistic-science-pack", 6) -- adjusted up from 350
+    scored_stat_task("automation-science-pack", 6)
+    scored_stat_task("logistic-science-pack", 6)
     scored_stat_task("utility-science-pack", 6)
     scored_stat_task("assembling-machine-3", 6, "entity-name.assembling-machine-3")
     scored_stat_task("production-science-pack", 6)
-    scored_stat_task("fast-transport-belt", 6, "entity-name.fast-transport-belt") -- adjusted up from 300
-    scored_stat_task("stack-inserter", 6, "entity-name.stack-inserter") -- adjusted up from 40
+    scored_stat_task("fast-transport-belt", 6, "entity-name.fast-transport-belt")
+    scored_stat_task("stack-inserter", 6, "entity-name.stack-inserter")
     --scored_stat_task("substation", 6, "entity-name.substation")
     scored_stat_task("personal-laser-defense-equipment", 6, "equipment-name.personal-laser-defense-equipment")
     scored_stat_task("artillery-wagon", 6, "entity-name.artillery-wagon")
-    scored_stat_task("roboport", 6, "entity-name.roboport") -- adjusted up from 4
-    scored_stat_task("solar-panel", 6, "entity-name.solar-panel") -- adjusted up from 40
+    scored_stat_task("roboport", 6, "entity-name.roboport")
+    scored_stat_task("solar-panel", 6, "entity-name.solar-panel")
     scored_stat_task("electric-furnace", 6, "entity-name.electric-furnace")
-    scored_stat_task("piercing-rounds-magazine", 6) -- adjusted up from 200
+    scored_stat_task("piercing-rounds-magazine", 6)
     scored_stat_task("refined-concrete", 6)
     scored_stat_task("exoskeleton-equipment", 6, "equipment-name.exoskeleton-equipment")
     --[[
-    scored_stat_task("laser-turret", 6) -- adjusted up from 15
+    scored_stat_task("laser-turret", 6)
     scored_stat_task("chemical-science-pack", 6)
     scored_stat_task("military-science-pack", 6)
     scored_stat_task("rocket-fuel", 6)
@@ -305,12 +315,12 @@ function TaskPrototypes.setup_tasks()
     scored_stat_task("cluster-grenade", 6)
     scored_stat_task("uranium-rounds-magazine", 6)
     scored_stat_task("uranium-cannon-shell", 6)
-    scored_stat_task("defender-capsule", 6) -- adjusted from 45
+    scored_stat_task("defender-capsule", 6)
     scored_stat_task("explosive-rocket", 6)
-    scored_stat_task("stone-wall", 6, "entity-name.stone-wall") -- adjusted up from 300
+    scored_stat_task("stone-wall", 6, "entity-name.stone-wall")
     scored_stat_task("solar-panel-equipment", 6, "equipment-name.solar-panel-equipment")
-    scored_stat_task("grenade", 6) -- adjusted up from 330
-    scored_stat_task("personal-roboport-equipment", 6, "equipment-name.personal-roboport-equipment") -- adjusted up from 6
+    scored_stat_task("grenade", 6)
+    scored_stat_task("personal-roboport-equipment", 6, "equipment-name.personal-roboport-equipment")
     --]]
     scored_stat_task("nuclear-reactor", 8, "entity-name.nuclear-reactor") -- adjusted up from 3
     scored_stat_task("satellite", 8)

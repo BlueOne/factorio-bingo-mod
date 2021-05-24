@@ -262,7 +262,9 @@ function Board.on_task_finished(args)
                         finished_line_index = line_index,
                         board = board
                     }
-                    game.print("Bingo board finished! "..board.team_name or "")
+                    local finish_string = "Board finished!"
+                    if board.team_name then finish_string = finish_string .. " By " .. board.team_name end
+                    game.print(finish_string)
                 end
             end
         end
