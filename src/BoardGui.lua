@@ -41,6 +41,7 @@ function BoardGui.create(player, args)
         mode = mode,
         lines = lines
     }
+    
     global.BoardGui.guis[player.index] = board_gui
 
     if type(player) == type(1) then player = game.players[player] end
@@ -264,7 +265,7 @@ local on_mark_line_button_click = function(event)
     local player = game.players[player_index]
     local board_gui = BoardGui.get(player)
 
-    if line_index < 0 or line_index > board_gui.n_rows+board_gui.n_cols then line_index = nil end
+    if line_index < 0 or line_index > board_gui.n_rows + board_gui.n_cols then line_index = nil end
 
     BoardGui.set_marked_line_index(board_gui, line_index)
 end

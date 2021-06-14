@@ -1,4 +1,43 @@
 
+local inventory = {
+    ["iron-plate"] = 200,
+    ["pipe"] = 200,
+    ["pipe-to-ground"] = 50,
+    ["copper-plate"] = 200,
+    ["steel-plate"] = 200,
+    ["iron-gear-wheel"] = 250,
+    ["transport-belt"] = 600,
+    ["underground-belt"] = 40,
+    ["splitter"] = 40,
+    ["gun-turret"] = 8,
+    ["stone-wall"] = 50,
+    ["repair-pack"] = 20,
+    ["inserter"] = 100,
+    ["burner-inserter"] = 50,
+    ["small-electric-pole"] = 50,
+    ["medium-electric-pole"] = 50,
+    ["big-electric-pole"] = 15,
+    ["burner-mining-drill"] = 50,
+    ["electric-mining-drill"] = 50,
+    ["stone-furnace"] = 35,
+    ["steel-furnace"] = 20,
+    ["electric-furnace"] = 8,
+    ["assembling-machine-1"] = 50,
+    ["assembling-machine-2"] = 20,
+    ["assembling-machine-3"] = 8,
+    ["electronic-circuit"] = 200,
+    ["fast-inserter"] = 100,
+    ["long-handed-inserter"] = 100,
+    ["substation"] = 10,
+    ["boiler"] = 10,
+    ["offshore-pump"] = 1,
+    ["steam-engine"] = 20,
+    ["chemical-plant"] = 20,
+    ["oil-refinery"] = 5,
+    ["pumpjack"] = 10,
+    ["small-lamp"] = 20
+}
+
 local function get_chest_offset(n)
     local root_2 = 1.4142
     local offset_x = 0
@@ -39,44 +78,6 @@ end
 
 local function create_starting_chest(surface, starting_point)
     local force = game.forces.player
-    local inventory = {
-        ["iron-plate"] = 200,
-        ["pipe"] = 200,
-        ["pipe-to-ground"] = 50,
-        ["copper-plate"] = 200,
-        ["steel-plate"] = 200,
-        ["iron-gear-wheel"] = 250,
-        ["transport-belt"] = 600,
-        ["underground-belt"] = 40,
-        ["splitter"] = 40,
-        ["gun-turret"] = 8,
-        ["stone-wall"] = 50,
-        ["repair-pack"] = 20,
-        ["inserter"] = 100,
-        ["burner-inserter"] = 50,
-        ["small-electric-pole"] = 50,
-        ["medium-electric-pole"] = 50,
-        ["big-electric-pole"] = 15,
-        ["burner-mining-drill"] = 50,
-        ["electric-mining-drill"] = 50,
-        ["stone-furnace"] = 35,
-        ["steel-furnace"] = 20,
-        ["electric-furnace"] = 8,
-        ["assembling-machine-1"] = 50,
-        ["assembling-machine-2"] = 20,
-        ["assembling-machine-3"] = 8,
-        ["electronic-circuit"] = 200,
-        ["fast-inserter"] = 100,
-        ["long-handed-inserter"] = 100,
-        ["substation"] = 10,
-        ["boiler"] = 10,
-        ["offshore-pump"] = 1,
-        ["steam-engine"] = 20,
-        ["chemical-plant"] = 20,
-        ["oil-refinery"] = 5,
-        ["pumpjack"] = 10,
-        ["small-lamp"] = 20
-    }
     if not (table_size(inventory) > 0) then return end
     local chest_name = "iron-chest"
     local prototype = game.entity_prototypes[chest_name]
@@ -124,4 +125,4 @@ local function create_starting_chest(surface, starting_point)
     set_tiles_safe(surface, tiles)
 end
 
-return { create_starting_chest = create_starting_chest }
+return { create_starting_chest = create_starting_chest, inventory = inventory }

@@ -91,38 +91,57 @@ local colorings = {
 
 
 -- Takes general settings for bingo board, returns specific tasks for the board
--- settings = { n=5, seed = ..., generic_line=... }
+-- settings = { n=5, seed = ..., tasks_per_line=... }
 -- n is the number of rows and columns,
 -- seed is the rng seed
--- generic_line determines which tasks are selected in every row/column. For example generic_line = {9, 7, 7, 7, gather} ensures that every row/column contains a task with difficulty 9, three with difficulty 7, one of type gather.
+-- tasks_per_line determines which tasks are selected in every row/column. For example tasks_per_line = {9, 7, 7, 7, gather} ensures that every row/column contains a task with difficulty 9, three with difficulty 7, one of type gather.
 
 function BoardCreator.roll_board(settings)
-    local n = settings.n or 5
-    assert(n <= 5)
-    local coloring = colorings[n]
-    local seed = 1
-    if settings and settings.seed then
-        seed = settings.seed
+    local n = settings.n or settings.n_cols or #settings.tasks_per_line or 5
+    local n_cols = n
+    local n_rows = settings.n_rows or n
+
+    if n_rows ~= n and settings.mode == "default" then
+        error("Bad settings for board generator: n_rows ~= n_columns but mode is default!")
     end
+
+    assert(n <= 5)
+    local seed = settings.seed or 1
+
+    game.print(settings.mode)
+    local mode = settings.mode or "default"
     local rng = game.create_random_generator(seed)
 
+    local coloring
 
-    if settings.generic_line then
-        n = #settings.generic_line
-        -- Select tasks. For each item in generic_line we select five random tasks of this type, such that all tasks selected are distinct.
+    if mode == "default" then
+        coloring = colorings[n]
+    elseif mode == "rows_only" then
+        coloring = {}
+        for _ = 1, n_rows do
+            for i = 1, n_cols do
+                table.insert(coloring, i)
+            end
+        end
+    end
+    local tasks_per_line = settings.tasks_per_line
+
+
+    if tasks_per_line then
+        -- Select tasks. For each item in tasks_per_line we select five random tasks of this type, such that all tasks selected are distinct.
         local tasks_sorted = get_tasks_by_balancing_category()
         local task_indices_left_per_category = {}
         local tasks_selected = {}
 
-        for category_index, category in pairs(settings.generic_line) do
+        for category_index, category in pairs(settings.tasks_per_line) do
             assert(tasks_sorted[category], "Board Generator: Tasks with balancing property "..category.." not available!")
             if task_indices_left_per_category[category] == nil then
                 task_indices_left_per_category[category] = {}
                 for j = 1, #tasks_sorted[category] do task_indices_left_per_category[category][j] = j end
             end
             tasks_selected[category_index] = {}
-            assert(#task_indices_left_per_category[category] >= n, "Board Generator: Not enough tasks provided for category "..category..", found "..#task_indices_left_per_category[category])
-            for j = 1, n do
+            assert(#task_indices_left_per_category[category] >= n_cols, "Board Generator: Not enough tasks provided for category "..category..", found "..#task_indices_left_per_category[category])
+            for j = 1, n_cols do
                 local offset = rng(1, #task_indices_left_per_category[category])
                 local task_index = task_indices_left_per_category[category][offset]
                 tasks_selected[category_index][j] = tasks_sorted[category][task_index]
@@ -139,18 +158,9 @@ function BoardCreator.roll_board(settings)
 
         return result
     else
-        error("Board Generator: Settings Error, missing generic_line value. "..serpent.block(settings))
+        error("Board Generator: Settings Error, missing tasks_per_line value. "..serpent.block(settings))
     end
 
-    local tasks = {}
-
-    local tasks_all = TaskPrototypes.all()
-    for name, _ in pairs(tasks_all) do
-        table.insert(tasks, name)
-        if #tasks == n * n then break end
-    end
-    local permutation = generate_random_permutation(n * n, rng)
-    return shuffle(tasks, permutation)
 end
 
 return BoardCreator

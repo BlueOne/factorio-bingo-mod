@@ -7,16 +7,33 @@ local BoardGenerator = require("src/BoardGenerator")
 local BoardGui = require("src/BoardGui") --luacheck:ignore 211
 local table = require("__stdlib__/stdlib/utils/table")
 local StartingItems = require("src/StartingItems")
+local StartingInventory = require("src/StartingInventory")
 
 
-local research_all_recipes = function(force)
-    for _, tech in pairs(force.technologies) do
-        if table.any(tech.effects,
-            function(effect) return effect.type == "unlock-recipe" end) or #tech.effects == 0
-        then
-            tech.researched = true
+
+local function set_research(force)
+    local techs_to_disable =
+    {
+      "physical-projectile-damage",
+      "stronger-explosives",
+      "refined-flammables",
+      "energy-weapons-damage",
+      "weapon-shooting-speed",
+      "laser-shooting-speed",
+      "follower-robot-count",
+      "mining-productivity"
+    }
+    force.research_all_technologies()
+    local tech = force.technologies
+    for k, name in pairs (techs_to_disable) do
+    for i = 1, 20 do
+        local full_name = name.."-"..i
+        if tech[full_name] then
+            tech[full_name].researched = false
         end
     end
+    end
+    force.reset_technology_effects()
 end
 
 local setup_spectator_force = function()
@@ -35,12 +52,39 @@ end
 -- TODO this is temporary. Come up with a better design.
 -- Current design: Bingo starts on init, joining players are assigned to the board as active players.
 local start_bingo = function()
+    --remote.call("freeplay", "set_disable_crashsite", true)
+    if not remote.interfaces["freeplay"] then error("The bingo mod only works in freeplay!") end
+    remote.call("freeplay", "set_skip_intro", true)
+    remote.call("freeplay", "set_disable_crashsite", true)
+    remote.call("freeplay", "set_created_items", {
+        ["submachine-gun"] = 1,
+        ["firearm-magazine"] = 40,
+        ["shotgun"] = 1,
+        ["shotgun-shell"] = 20,
+        ["construction-robot"] = 10,
+    })
+    remote.call("freeplay", "set_respawn_items", {
+        ["submachine-gun"] = 1,
+        ["firearm-magazine"] = 40,
+        ["shotgun"] = 1,
+        ["shotgun-shell"] = 20,
+        ["construction-robot"] = 10,
+    })
+
     setup_spectator_force()
-    research_all_recipes(game.forces.player)
+    set_research(game.forces.player)
     StartingItems.create_starting_chest(game.surfaces.nauvis, {x=0, y=0})
+
+    local mode = "rows_only"
+    local n_rows = 3
+    local tasks_per_line = {2, 2, "gather", 5}
+    local n = #tasks_per_line
+
     local settings = {
         seed = game.surfaces["nauvis"].map_gen_settings.seed,
-        generic_line = {6, 6, "gather", "restriction", 8}
+        tasks_per_line = tasks_per_line,
+        mode = mode,
+        n_rows = n_rows
     }
     local tasks = BoardGenerator.roll_board(settings)
     local players = {}
@@ -48,19 +92,19 @@ local start_bingo = function()
         if p.force.name == "player" and p.connected then
             table.insert(players, p)
         end
-    end
-    local args = {
-        task_names = tasks,
-        n = 5,
-        active_players = players,
-    }
-    if false then
-        for i = 11, 25 do tasks[i] = nil end
-        args.mode = "rows_only"
-        args.n_rows = 2
+
+        StartingInventory.give_respawn_equipment(p)
     end
 
-    local board = Board.create(args)
+    local bingo_settings = {
+        task_names = tasks,
+        n = n,
+        n_rows = n_rows,
+        mode = mode,
+        active_players = players,
+    }
+
+    local board = Board.create(bingo_settings)
 
     global.bingo_board = board
 end
@@ -76,7 +120,10 @@ Event.on_event(defines.events.on_player_joined_game, function(args) --luacheck: 
         start_bingo()
     end
     Board.add_active_player(global.bingo_board, player)
+    StartingInventory.give_respawn_equipment(player)
 end)
+
+Event.on_event(defines.events.on_player_respawned, StartingInventory.on_player_respawned)
 
 
 --[[

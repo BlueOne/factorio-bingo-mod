@@ -69,7 +69,7 @@ local function setup_price_list()
         ["copper-ore"] = 1.,
         ["coal"] = 1.,
         ["stone"] = 1.,
-        ["crude-oil"] = 0.8,
+        ["crude-oil"] = 0.2,
         ["water"] = 1./1000,
         ["steam"] = 2./1000,
         ["wood"] = 4.,
@@ -121,16 +121,12 @@ end
 
 local scored_stat_task = function(name, difficulty, localized_name, icon_str, stat_type, count_factor)
     local difficulty_to_score = {
-        100,
-        300,
-        1000,
-        3000,
-        10000,
         30000,
-        100000,
+        75000,
+        150000,
         300000,
+        500000,
         1000000,
-        3000000,
     }
     local score = difficulty_to_score[difficulty]
     if not global.TaskPrototypes.price_list then setup_price_list() end
@@ -250,8 +246,9 @@ function TaskPrototypes.setup_tasks()
     }
 
     simple_stat_task("biter-spawner", 60, nil, "entity-name.biter-spawner", "[entity=biter-spawner]", "kill", "gather")
-    simple_stat_task("medium-biter", 500, nil, "entity-name.medium-biter", "[entity=medium-biter]", "kill", "gather")
+    simple_stat_task("small-biter", 800, nil, "entity-name.small-biter", "[entity=small-biter]", "kill", "gather")
     simple_stat_task("big-worm-turret", 1, nil, "entity-name.big-worm-turret", "[entity=big-worm-turret]", "kill", "gather")
+    simple_stat_task("landfill", 3000, nil, "item-name.landfill", "[item=landfill]", "item", "gather")
 
     TaskPrototypes.add{
         name = "have-500-fish",
@@ -287,50 +284,57 @@ function TaskPrototypes.setup_tasks()
     end
     --]]
 
-    scored_stat_task("automation-science-pack", 6)
-    scored_stat_task("logistic-science-pack", 6)
-    scored_stat_task("utility-science-pack", 6)
-    scored_stat_task("assembling-machine-3", 6, "entity-name.assembling-machine-3")
-    scored_stat_task("production-science-pack", 6)
-    scored_stat_task("fast-transport-belt", 6, "entity-name.fast-transport-belt")
-    scored_stat_task("stack-inserter", 6, "entity-name.stack-inserter")
-    --scored_stat_task("substation", 6, "entity-name.substation")
-    scored_stat_task("personal-laser-defense-equipment", 6, "equipment-name.personal-laser-defense-equipment")
-    scored_stat_task("artillery-wagon", 6, "entity-name.artillery-wagon")
-    scored_stat_task("roboport", 6, "entity-name.roboport")
-    scored_stat_task("solar-panel", 6, "entity-name.solar-panel")
-    scored_stat_task("electric-furnace", 6, "entity-name.electric-furnace")
-    scored_stat_task("piercing-rounds-magazine", 6)
-    scored_stat_task("refined-concrete", 6)
-    scored_stat_task("exoskeleton-equipment", 6, "equipment-name.exoskeleton-equipment")
+    scored_stat_task("automation-science-pack", 2)
+    scored_stat_task("logistic-science-pack", 2)
+    scored_stat_task("utility-science-pack", 2)
+    scored_stat_task("assembling-machine-3", 2, "entity-name.assembling-machine-3")
+    scored_stat_task("production-science-pack", 2)
+    scored_stat_task("fast-transport-belt", 2, "entity-name.fast-transport-belt")
+    scored_stat_task("stack-inserter", 2, "entity-name.stack-inserter")
+    --scored_stat_task("substation", 2, "entity-name.substation")
+    scored_stat_task("personal-laser-defense-equipment", 2, "equipment-name.personal-laser-defense-equipment")
+    scored_stat_task("artillery-wagon", 2, "entity-name.artillery-wagon")
+    scored_stat_task("roboport", 2, "entity-name.roboport")
+    scored_stat_task("solar-panel", 2, "entity-name.solar-panel")
+    scored_stat_task("electric-furnace", 2, "entity-name.electric-furnace")
+    scored_stat_task("piercing-rounds-magazine", 2)
+    scored_stat_task("refined-concrete", 2)
+    scored_stat_task("exoskeleton-equipment", 2, "equipment-name.exoskeleton-equipment")
     --[[
-    scored_stat_task("laser-turret", 6)
-    scored_stat_task("chemical-science-pack", 6)
-    scored_stat_task("military-science-pack", 6)
-    scored_stat_task("rocket-fuel", 6)
-    scored_stat_task("rocket-control-unit", 6)
-    scored_stat_task("low-density-structure", 6)
-    scored_stat_task("flying-robot-frame", 6)
-    scored_stat_task("effectivity-module-2", 6)
-    scored_stat_task("cluster-grenade", 6)
-    scored_stat_task("uranium-rounds-magazine", 6)
-    scored_stat_task("uranium-cannon-shell", 6)
-    scored_stat_task("defender-capsule", 6)
-    scored_stat_task("explosive-rocket", 6)
-    scored_stat_task("stone-wall", 6, "entity-name.stone-wall")
-    scored_stat_task("solar-panel-equipment", 6, "equipment-name.solar-panel-equipment")
-    scored_stat_task("grenade", 6)
-    scored_stat_task("personal-roboport-equipment", 6, "equipment-name.personal-roboport-equipment")
+    scored_stat_task("laser-turret", 2)
+    scored_stat_task("chemical-science-pack", 2)
+    scored_stat_task("military-science-pack", 2)
+    scored_stat_task("rocket-fuel", 2)
+    scored_stat_task("rocket-control-unit", 2)
+    scored_stat_task("low-density-structure", 2)
+    scored_stat_task("flying-robot-frame", 2)
+    scored_stat_task("effectivity-module-2", 2)
+    scored_stat_task("cluster-grenade", 2)
+    scored_stat_task("uranium-rounds-magazine", 2)
+    scored_stat_task("uranium-cannon-shell", 2)
+    scored_stat_task("defender-capsule", 2)
+    scored_stat_task("explosive-rocket", 2)
+    scored_stat_task("stone-wall", 2, "entity-name.stone-wall")
+    scored_stat_task("solar-panel-equipment", 2, "equipment-name.solar-panel-equipment")
+    scored_stat_task("grenade", 2)
+    scored_stat_task("personal-roboport-equipment", 2, "equipment-name.personal-roboport-equipment")
     --]]
-    scored_stat_task("nuclear-reactor", 8, "entity-name.nuclear-reactor") -- adjusted up from 3
-    scored_stat_task("satellite", 8)
-    scored_stat_task("nuclear-fuel", 8)
-    scored_stat_task("destroyer-capsule", 8)
-    scored_stat_task("rocket-silo", 8, "entity-name.rocket-silo")
-    scored_stat_task("personal-roboport-mk2-equipment", 8, "equipment-name.personal-roboport-mk2-equipment")
-    scored_stat_task("fusion-reactor-equipment", 8, "equipment-name.fusion-reactor-equipment")
-    scored_stat_task("spidertron", 10, "entity-name.spidertron")
-    scored_stat_task("power-armor-mk2", 9, "armor.power-armor-mk2")
+    scored_stat_task("nuclear-reactor", 4, "entity-name.nuclear-reactor")
+    scored_stat_task("satellite", 4)
+    scored_stat_task("nuclear-fuel", 4)
+    scored_stat_task("destroyer-capsule", 4)
+    scored_stat_task("rocket-silo", 4, "entity-name.rocket-silo")
+    scored_stat_task("personal-roboport-mk2-equipment", 4, "equipment-name.personal-roboport-mk2-equipment")
+    scored_stat_task("fusion-reactor-equipment", 4, "equipment-name.fusion-reactor-equipment")
+    scored_stat_task("nuclear-reactor", 5, "entity-name.nuclear-reactor")
+    scored_stat_task("satellite", 5)
+    scored_stat_task("nuclear-fuel", 5)
+    scored_stat_task("destroyer-capsule", 5)
+    scored_stat_task("rocket-silo", 5, "entity-name.rocket-silo")
+    scored_stat_task("personal-roboport-mk2-equipment", 5, "equipment-name.personal-roboport-mk2-equipment")
+    scored_stat_task("fusion-reactor-equipment", 5, "equipment-name.fusion-reactor-equipment")
+    scored_stat_task("spidertron", 6, "entity-name.spidertron")
+    scored_stat_task("power-armor-mk2", 5, "armor.power-armor-mk2")
 end
 
 return TaskPrototypes

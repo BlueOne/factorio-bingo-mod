@@ -57,7 +57,7 @@ function Board.create(args)
             for i = 1, n_cols do
                 local line_vertical = {}
                 for j = 1, n_rows do
-                    table.insert(line_vertical, i + (j-1)*5)
+                    table.insert(line_vertical, i + (j-1)*n_cols)
                 end
                 table.insert(lines, line_vertical)
             end
@@ -65,7 +65,7 @@ function Board.create(args)
         for i = 1, n_rows do
             local line_horizontal = {}
             for j = 1, n_cols do
-                table.insert(line_horizontal, (i-1)*5 + j)
+                table.insert(line_horizontal, (i-1)*n_cols + j)
             end
             table.insert(lines, line_horizontal)
         end
