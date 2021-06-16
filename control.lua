@@ -8,6 +8,7 @@ local BoardGui = require("src/BoardGui") --luacheck:ignore 211
 local table = require("__stdlib__/stdlib/utils/table")
 local StartingItems = require("src/StartingItems")
 local StartingInventory = require("src/StartingInventory")
+local string = require('__stdlib__/stdlib/utils/string')
 
 
 
@@ -48,10 +49,70 @@ local setup_spectator_force = function()
     player_force.share_chart = true
 end
 
+local function create_start_settings()
+    local board_settings = {
+        mode = "default",
+        n_rows = 3,
+        tasks_per_line = {5},
+        n = 4
+    }
+
+    local preset = settings.global["bingo-start-preset"].value
+    if preset ~= "unset" then
+        if preset == "default" then
+            table.insert(board_settings.tasks_per_line, "gather")
+        end
+        if preset == "large" then
+            table.insert(board_settings.tasks_per_line, "gather")
+            table.insert(board_settings.tasks_per_line, "restriction")
+            board_settings.n = 5
+        end
+        if preset == "rows-only" then
+            board_settings.mode = "rows_only"
+            board_settings.n_rows = 3
+        end
+        if preset == "rows-only-large" then
+            board_settings.mode = "rows_only"
+            table.insert(board_settings.tasks_per_line, "gather")
+            table.insert(board_settings.tasks_per_line, "restriction")
+            board_settings.n = 6
+            board_settings.n_rows = 4
+        end
+    else
+        if settings.global["bingo-start-rows-only"].value == true then
+            board_settings.mode = "rows_only"
+        end
+        if settings.global["bingo-start-enable-gather-tasks"].value == true then
+            table.insert(board_settings.tasks_per_line, "gather")
+        end
+        if settings.global["bingo-start-enable-restriction-tasks"].value == true then
+            table.insert(board_settings.tasks_per_line, "restriction")
+        end
+        if settings.global["bingo-start-columns-count"].value then
+            board_settings.n = settings.global["bingo-start-columns-count"].value
+        end
+        if settings.global["bingo-start-rows-count"].value then
+            board_settings.n_rows = settings.global["bingo-start-rows-count"].value
+        end
+    end
+
+    for i = #board_settings.tasks_per_line, board_settings.n-1 do
+        table.insert(board_settings.tasks_per_line, 2)
+    end
+    return board_settings
+end
+
 
 -- TODO this is temporary. Come up with a better design.
 -- Current design: Bingo starts on init, joining players are assigned to the board as active players.
 local start_bingo = function()
+    local start_settings = create_start_settings()
+    local mode = start_settings.mode
+    local n_rows = start_settings.n_rows
+    local tasks_per_line = start_settings.tasks_per_line
+    local n = start_settings.n
+
+
     --remote.call("freeplay", "set_disable_crashsite", true)
     if not remote.interfaces["freeplay"] then error("The bingo mod only works in freeplay!") end
     remote.call("freeplay", "set_skip_intro", true)
@@ -75,18 +136,14 @@ local start_bingo = function()
     set_research(game.forces.player)
     StartingItems.create_starting_chest(game.surfaces.nauvis, {x=0, y=0})
 
-    local mode = "rows_only"
-    local n_rows = 3
-    local tasks_per_line = {2, 2, "gather", 5}
-    local n = #tasks_per_line
 
-    local settings = {
+    local generator_settings = {
         seed = game.surfaces["nauvis"].map_gen_settings.seed,
         tasks_per_line = tasks_per_line,
         mode = mode,
         n_rows = n_rows
     }
-    local tasks = BoardGenerator.roll_board(settings)
+    local tasks = BoardGenerator.roll_board(generator_settings)
     local players = {}
     for _, p in pairs(game.players) do
         if p.force.name == "player" and p.connected then
@@ -113,6 +170,14 @@ end
 Event.on_init(function()
     start_bingo()
 end)
+
+
+Event.on_event(defines.events.on_runtime_mod_setting_changed, function(args)
+    if string.starts_with(args.setting, "bingo-start") and args.player_index then
+        game.players[args.player_index].print("A bingo mod setting was changed, this has no effect after the board has been started!")
+    end
+end)
+
 
 Event.on_event(defines.events.on_player_joined_game, function(args) --luacheck: ignore 212
     local player = game.players[args.player_index]

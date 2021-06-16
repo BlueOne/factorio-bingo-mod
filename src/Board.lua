@@ -31,8 +31,15 @@ function Board.create(args)
     if args.force then active_players = table.copy(args.force.players) end
     local force = args.force or game.forces.player
     local n = args.n or 5
-    local n_rows = args.n_rows or n
     local n_cols = args.n_cols or n
+    local n_rows
+    if args.mode == "rows_only" then
+        n_rows = args.n_rows
+        assert(n_rows ~= nil, "Board Generator Error: Number of rows has to be passed in rows only mode.")
+    else
+        n_rows = n
+    end
+
     local mode = args.mode or "default"
     local auto_generate_team_name = args.auto_generate_team_name
     if auto_generate_team_name == nil then auto_generate_team_name = true end

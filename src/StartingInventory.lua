@@ -21,7 +21,6 @@ end
 
 
 StartingItems.give_respawn_equipment = function(player)
-    game.print("A")
     if not player.character then return end
     if not is_player_force(player.force) then return end
     local equipment = StartingItems.respawn_items

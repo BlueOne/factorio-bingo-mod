@@ -67,16 +67,24 @@ local colorings = {
     },
     {
         1, 2, 3, 4,
-        2, 1, 4, 3,
-        3, 4, 1, 2,
         4, 3, 2, 1,
+        3, 4, 1, 2,
+        2, 1, 4, 3,
     },
     {
+        1, 2, 3, 4, 5,
         5, 1, 2, 3, 4,
         4, 5, 1, 2, 3,
         3, 4, 5, 1, 2,
         2, 3, 4, 5, 1,
-        1, 2, 3, 4, 5,
+    },
+    {
+        1, 2, 3, 4, 5, 6,
+        6, 1, 2, 3, 4, 5,
+        5, 6, 1, 2, 3, 4,
+        4, 5, 6, 1, 2, 3,
+        3, 4, 5, 6, 1, 2,
+        2, 3, 4, 5, 6, 1,
     }
 --[[
     {
@@ -94,18 +102,20 @@ local colorings = {
 -- settings = { n=5, seed = ..., tasks_per_line=... }
 -- n is the number of rows and columns,
 -- seed is the rng seed
--- tasks_per_line determines which tasks are selected in every row/column. For example tasks_per_line = {9, 7, 7, 7, gather} ensures that every row/column contains a task with difficulty 9, three with difficulty 7, one of type gather.
+-- tasks_per_line determines which tasks are selected in every row/column. For example tasks_per_line = {5, 2, 2, 2, gather} ensures that every row/column contains a task with difficulty 5, three with difficulty 2, one of type gather.
 
 function BoardCreator.roll_board(settings)
     local n = settings.n or settings.n_cols or #settings.tasks_per_line or 5
     local n_cols = n
-    local n_rows = settings.n_rows or n
-
-    if n_rows ~= n and settings.mode == "default" then
-        error("Bad settings for board generator: n_rows ~= n_columns but mode is default!")
+    local n_rows
+    if settings.mode == "rows_only" then
+        n_rows = settings.n_rows
+        assert(n_rows ~= nil, "Board Generator Error: Number of rows has to be passed in rows only mode.")
+    else
+        assert(n <= 6)
+        n_rows = n
     end
 
-    assert(n <= 5)
     local seed = settings.seed or 1
 
     game.print(settings.mode)
@@ -140,15 +150,14 @@ function BoardCreator.roll_board(settings)
                 for j = 1, #tasks_sorted[category] do task_indices_left_per_category[category][j] = j end
             end
             tasks_selected[category_index] = {}
-            assert(#task_indices_left_per_category[category] >= n_cols, "Board Generator: Not enough tasks provided for category "..category..", found "..#task_indices_left_per_category[category])
-            for j = 1, n_cols do
+            assert(#task_indices_left_per_category[category] >= n_rows, "Board Generator: Not enough tasks provided for category "..category..", found "..#task_indices_left_per_category[category])
+            for j = 1, n_rows do
                 local offset = rng(1, #task_indices_left_per_category[category])
                 local task_index = task_indices_left_per_category[category][offset]
                 tasks_selected[category_index][j] = tasks_sorted[category][task_index]
                 table.remove(task_indices_left_per_category[category], offset)
             end
         end
-
         -- Assign tasks to board according to board coloring. Tasks are already shuffled in the previous step.
         local result = {}
         for i, category_index in pairs(coloring) do
